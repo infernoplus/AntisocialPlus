@@ -29,17 +29,17 @@ function util.color(name)
   if string.lower(name) == 'white' then
     return {r = 255, g = 255, b = 255}
   elseif string.lower(name) == 'red' then
-    return {r = 242, g = 16, b = 0}
+    return {r = 238, g = 49, b = 49}
   elseif string.lower(name) == 'green' then
-    return {r = 31, g = 242, b = 60}
+    return {r = 59, g = 231, b = 80}
   elseif string.lower(name) == 'blue' then
-    return {r = 31, g = 67, b = 242}
+    return {r = 85, g = 112, b = 240}
   elseif string.lower(name) == 'purple' then
-    return {r = 186, g = 31, b = 242}
+    return {r = 155, g = 91, b = 244}
   elseif string.lower(name) == 'orange' then
-    return {r = 252, g = 190, b = 3}
+    return {r = 237, g = 187, b = 78}
   elseif string.lower(name) == 'yellow' then
-    return {r = 245, g = 245, b = 59}
+    return {r = 245, g = 245, b = 112}
   else
     return {r = 33, g = 33, b = 33}
   end

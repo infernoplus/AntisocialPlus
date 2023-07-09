@@ -16,7 +16,6 @@ local util = require('util')
 bar.list = {}
 
 bar.bupdate = false
-bar.lbids = {}  -- Local buff ids
 bar.timer = 0
 
 local chp = {r = 255, g = 155, b = 155}
@@ -35,6 +34,7 @@ function bar.onCommand(cmd)
       return true
     end
     
+    bar.clear()
     bar.setup()
     
     return true
@@ -60,6 +60,9 @@ function bar.clear()
     b.hp.edge:destroy()
     b.hp.num:destroy()
     b.hp.prog:destroy()
+    for j,buf in ipairs(b.buffs) do
+      buf.icon:destroy()
+    end
   end
   bar.list = {}
   return true
@@ -67,7 +70,7 @@ end
 
 -- creates health bars based on current party info
 function bar.setup()
-  -- check if the current bar.list matches the party
+  -- check if the current bar.list matches the party -- add some code to chaeck for mana and regen
   local party = util.getParty()
   local regen = false
   for i,p in ipairs(party) do
@@ -109,9 +112,7 @@ function bar.setup()
     b.tp.num = bar.newTextNum(b.id, h)
     b.tp.prog = bar.newBoxProg(b.id, h, ctp)
     
-    b.buff = {}
-    b.buff.ids = {}
-    b.buff.list = {}
+    b.buffs = {}
     
     bar.list[#bar.list+1] = b
   end
@@ -132,18 +133,9 @@ function bar.onFrame()
   
   bar.setup() -- if we need to regen the party list this will do it
   
-  local bfs = windower.ffxi.get_player().buffs
-  if #bfs == #bar.lbids then
-    return
-  end
-  
-  local bufcat = ''
-  for i,b in ipairs(bfs) do
-    bufcat = bufcat .. b .. ' '
-  end
-  util.send('all', 'asp bupdate ' .. player.name .. ' ' .. util.trim(bufcat))
-  
-  bar.lbids = bfs
+  -- Update local players buffs
+  bar.bupdate(1, windower.ffxi.get_player().buffs)
+
 end
 
 local wsets = windower.get_windower_settings()
@@ -156,6 +148,81 @@ local padding = vec2.create(10, 1)
 local progOff = 8
 local numPad = 3
 local bsize = vec2.create(18,18)
+
+function bar.bupdate(index, data)
+  if not bar.list[index] or #data == #bar.list[index].buffs then
+    return   -- temp hacky, need to actually sort ids low to high then compare
+  end
+  
+  for i,bu in ipairs(bar.list[index].buffs) do
+    bu.icon:destroy()
+  end
+  bar.list[index].buffs = {}
+  
+  for j,bid in ipairs(data) do
+    local bo = {}
+    bo.id = bid
+    bo.icon = bar.newBoxBuff(bid, bar.list[index].id)
+    
+    local off = vec2.add(base, vec2.create(((size.x + margin.x) * bar.list[index].id) + (bsize.x * (j-1)), ((size.y + margin.y) * 2) + bsize.y))
+    bo.icon:pos(off.x, win.y - off.y)
+    bar.list[index].buffs[#bar.list[index].buffs+1] = bo
+  end
+end
+
+function bar.inPacket(id, original)
+  -- Party buff lists
+  if id == 118 then
+    local pak = packets.parse('incoming', original)    
+    local pt = {}
+    
+    -- collect buff data
+    for  k = 0, 4 do
+      local b = {}
+      b.id = pak['ID ' .. (k+1)]
+      b.index = pak['Index ' .. (k+1)]
+      b.buffs = {}
+      
+      if not (b.id == 0 and b.index == 0) then
+        for i = 1, 32 do
+          local buff = original:byte(k*48+5+16+i-1) + 256*( math.floor( original:byte(k*48+5+8+ math.floor((i-1)/4)) / 4^((i-1)%4) )%4) -- Credit: Byrth, GearSwap
+          if buff == 255 then break end -- not exactly correct but ehhhh fuck it why not
+          
+          b.buffs[i] = buff
+        end
+      end
+      
+      pt[k+1] = b
+    end
+
+    for i,pb in ipairs(pt) do
+      local party = util.getParty()
+      
+      for j,ply in ipairs(party) do
+      -- fix this for the love of god. we are just assuming they are in the same order  
+        --if ply.mob then print(ply.mob.id .. ' and ' .. pb.id) end
+        --if ply.mob and pb.id == ply.mob.id then
+          --print('calling bupdate')
+          
+
+
+        --end
+        
+        if ply.mob and ply.mob.id == pb.id then  -- probably correct??
+          bar.bupdate(i+1, pb.buffs)
+        end
+      end
+      --bar.bupdate(i+1, pb.buffs)
+    end
+   
+  end
+  
+  -- Party member update
+  if id == 228 then
+    local pak = packets.parse('incoming', original)
+    print( pak.ID .. ' is a ' .. pak['Main Job'] .. '/' .. pak['Sub Job'])
+  end
+end
 
 function bar.draw()
   local party = windower.ffxi.get_party()
@@ -182,11 +249,17 @@ function bar.draw()
       visibleBar(b.mp, false)
       visibleBar(b.tp, false)
       b.name:visible(false)
+      for j,buf in ipairs(b.buffs) do
+        buf.icon:visible(false)
+      end
     else
       visibleBar(b.hp, true)
       visibleBar(b.mp, true)
       visibleBar(b.tp, true)
       b.name:visible(true)
+      for j,buf in ipairs(b.buffs) do
+        buf.icon:visible(true)
+      end
     
       local hps = (player.hpp / 100)
       local mps = (player.mpp / 100)
@@ -249,26 +322,8 @@ function bar.draw()
           b.tp.num:stroke_alpha(100)
         end
       end
-      
-      if bar.bupdate then
-        for j,bu in ipairs(b.buff.list) do
-          bu.icon:destroy()
-        end
-        b.buff.list = {}
-        
-        for j,bid in ipairs(b.buff.ids) do
-          local bo = {}
-          bo.id = bid
-          bo.icon = bar.newBoxBuff(bid, b.id)
-          
-          local off = vec2.add(base, vec2.create(((size.x + margin.x) * b.id) + (bsize.x * (j-1)), ((size.y + margin.y) * 2) + bsize.y))
-          bo.icon:pos(off.x, win.y - off.y)
-          b.buff.list[#b.buff.list+1] = bo
-        end
-      end
     end
   end
-  bar.bupdate = false
 end
 
 function bar.newTextName(txt, id, num)

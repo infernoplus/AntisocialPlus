@@ -20,6 +20,7 @@ local util = require('util')
 track.list = {}
 
 track.last = nil
+track.mast = nil
 track.timer = 0
 
 function track.onCommand(cmd)
@@ -111,6 +112,22 @@ function track.onFrame()
     elseif recasts[i] > re then
       local abls = res.ability_recasts[i]
       util.send('all', 'asp trackdata ' .. player.name .. ' ' .. recasts[i] .. ' ' .. abls.en)
+    end
+  end
+  
+  local macasts = windower.ffxi.get_spell_recasts()           -- lol why did i do this guh
+  
+  if not track.mast then
+    track.mast = macasts
+    return
+  end
+  
+  for i,ma in pairs(track.mast) do
+    if macasts[i] == nil or ma == nil then
+    elseif macasts[i] > ma then
+      local spell = res.spells[i]
+      --print('asp trackdata ' .. player.name .. ' ' .. math.floor(macasts[i]/60) .. ' ' .. spell.en)
+      util.send('all', 'asp trackdata ' .. player.name .. ' ' .. math.floor(macasts[i]/60) .. ' ' .. spell.en)
     end
   end
   

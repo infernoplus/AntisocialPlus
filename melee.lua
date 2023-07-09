@@ -311,7 +311,8 @@ function melee.report()
   if melee.stuck then return end
   
   melee.stuck = true
-  util.exec('input /p Can\'t reach my position! Just gonna bonk em from here instead.')
+  --util.exec('input /p Can\'t reach my position! Just gonna bonk em from here instead.')
+  log('Melee plugin failed to reach position!')
 end
 
 return melee

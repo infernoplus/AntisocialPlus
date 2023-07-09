@@ -27,6 +27,7 @@ local talk = require('talk')
 local trade = require('trade')
 local target = require('target')
 local examine = require('examine')
+local camp = require('camp')
 local misc = require('misc')
 local uptime = require('uptime')
 local bar = require('bar')
@@ -124,6 +125,7 @@ windower.register_event('addon command', function(...)
   elseif party.command(cmd) then return
   elseif target.command(cmd) then return
   elseif examine.command(cmd) then return
+  elseif camp.command(cmd) then return
   elseif misc.command(cmd) then return
   elseif uptime.onCommand(cmd) then return
   elseif use.onCommand(cmd) then return
@@ -148,6 +150,7 @@ windower.register_event('prerender', function()
   track.onFrame()
   uptime.onFrame()
   gather.onFrame()
+  camp.onFrame()
   bar.onFrame()
   experience.onFrame()
   
@@ -182,14 +185,15 @@ windower.register_event('incoming chunk', function(id, original, modified, injec
   if injected or blocked then return end
   
   trade.inPacket(id, original)
+  bar.inPacket(id, original)
+  foe.inPacket(id, original)
   
   --local pak = packets.parse('incoming', original)
-  -- if id == 202 then
-  --  print('pkt ' .. id)
-  --  print('    ' .. inspect(pak))
-  -- end
- 
-  if pkt then return end
+  --print('pkt ' .. id .. '     ' .. pak._name .. '  -- ' .. pak._description)
+  --for k, v in pairs(pak) do
+  --  print(k)
+  --  print(inspect(v))
+  --end
 end)
 
 -- Outgoing packet event
@@ -218,6 +222,7 @@ windower.register_event('status change', function(id)
   melee.status(id)
   talk.status(id)
   uptime.status(id)
+  foe.status(id)
 end)
 
 -- Player action events
@@ -225,11 +230,13 @@ windower.register_event('action', function(act)
   use.onAction(act)
   melee.onAction(act)
   battlemage.onAction(act)
+  foe.onAction(act)
 end)
 
 windower.register_event('action message',function (actor_id, target_id, actor_index, target_index, message_id, param_1, param_2, param_3)
   --log(message_id)
   use.onActionMessage(message_id)
+  foe.onActionMessage(actor_id, target_id, actor_index, target_index, message_id, param_1, param_2, param_3)
 end)
 
 windower.register_event('party invite', function()
