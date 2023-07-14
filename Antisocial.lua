@@ -204,8 +204,8 @@ windower.register_event('outgoing chunk', function(id, original, modified, injec
   
   --local pak = packets.parse('outgoing', original)
   --if id ~= 21 then
-  --  print('pkt ' .. id)
-  --  print('    ' .. inspect(pak))
+    --print('PKT#' .. id .. ' ::: ' .. pak._description )
+    --print('    ' .. inspect(pak))
   --end
  
   if pkt then return end
